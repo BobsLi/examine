@@ -1,28 +1,32 @@
 <template>
   <div class="hello">
-    <countdown :time="5 * 60 * 1000" :transform="transform">
+    <!-- <countdown :time="timeRemaining" :transform="transform" @progress="handleProgress" @end="handleEnd">
       <template #default="{ hours, minutes, seconds }">
         {{ `${hours}:${minutes}:${seconds}` }}
       </template>
-    </countdown>
+    </countdown> -->
     <el-row type="flex" align="middle" justify="center">
       <el-col :xs="24" :sm="12">
         <el-tabs v-model="activeName" type="card" style="text-align:left">
           <el-tab-pane label="随机答题" name="2">
             <template v-if="activeName === '2'">
               <div class="opt-btn" style="margin: 15px 0">
-                <el-button type="primary" @click="handleRandom">随机答题</el-button>
-                <el-button type="primary" @click="handleRandom">开始答题</el-button>
-                <el-button type="primary" @click="handleRandom">重新答题</el-button>
+                <el-button type="primary" size="small" @click="handleRandom">随机答题</el-button>
+                <el-button v-if="examineStatus === 1" type="primary" size="small" @click="handleBegin">开始答题</el-button>
+                <el-button v-if="[1, 2].includes(examineStatus)" type="primary" size="small" @click="handleImmediately">立即答题</el-button>
+                <el-button v-if="[3, 4].includes(examineStatus)" type="primary" size="small" @click="handleAgain">重新答题</el-button>
+                <el-button v-if="[3].includes(examineStatus)" type="primary" size="small" @click="handleFinish">结束答题</el-button>
                 <div style="float: right; color: red; font-weight: bold;">
                   <span>{{ examineStatusMap[examineStatus].label }}</span>
-                  <countdown ref="countdownRef" :time="countdownTime" :transform="transform">
-                    <template #default="{ hours, minutes, seconds }">
-                      {{ `${hours}:${minutes}:${seconds}` }}
-                    </template>
-                  </countdown>
-                  <!-- <span>{{  }}</span> -->
-                  <el-button type="primary" size="mini" @click="handleRandom">暂停时间</el-button>
+                  <template v-if="examineStatus !== 4">
+                    <countdown ref="countdownRef" :time="countdownTime" :transform="transform" @progress="handleProgress" @end="handleEnd">
+                      <template #default="{ hours, minutes, seconds }">
+                        {{ `${hours}:${minutes}:${seconds}` }}
+                      </template>
+                    </countdown>
+                    <el-button v-if="[1, 2, 3].includes(examineStatus)" :type="isPause ? 'success' : 'danger'" size="mini" @click="handleTime">{{ isPause ? '继续答题' : '暂停答题' }}</el-button>
+                  </template>
+                  <span v-else>{{ timeRemaining }}</span>
                 </div>
               </div>
               <el-collapse v-model="examineItemActiveName">
@@ -75,9 +79,32 @@
               </el-form>
             </template>
           </el-tab-pane>
+          <el-tab-pane label="导入题目" name="4">
+            <template v-if="activeName === '4'">
+              <el-form :model="{}" label-position="top">
+                <el-form-item label="导入">
+                  <el-input v-model="jsonStr" type="textarea" :rows="10" placeholder=""></el-input>
+                </el-form-item>
+                <el-form-item label="" style="text-align: right">
+                  <el-button type="default" @click="handleCancel">取消</el-button>
+                  <el-button type="primary" @click="handleImport">保存</el-button>
+                </el-form-item>
+              </el-form>
+            </template>
+          </el-tab-pane>
         </el-tabs>
       </el-col>
     </el-row>
+    <audio v-if="[4].includes(examineStatus)" controls height="100" width="100" autoplay style="display: fixed; top: -1000; z-index: -1; opacity: 0; visibility: hidden"> 
+      <source src="/audio/end.mp3" type="audio/mpeg">
+      <source src="/audio/end.mp3" type="audio/ogg">
+      <embed height="50" width="100" src="/audio/end.mp3">
+    </audio>
+    <audio v-if="[2].includes(examineStatus)" controls height="100" width="100" autoplay style="display: fixed; top: -1000; z-index: -1; opacity: 0; visibility: hidden"> 
+      <source src="/audio/start.mp3" type="audio/mpeg">
+      <source src="/audio/start.mp3" type="audio/ogg">
+      <embed height="50" width="100" src="/audio/start.mp3">
+    </audio>
   </div>
 </template>
 
@@ -88,6 +115,13 @@ import { cloneDeep, differenceBy } from 'lodash'
 import { v4 as uuidv4 } from 'uuid'
 const listCache = window.localStorage.getItem('list') || ''
 const havedListCache = window.localStorage.getItem('havedList') || ''
+
+// import * as fs from 'fs/promises'
+
+// fs.readFile('/cache/list.json', (err, data) => {
+//   console.log(err)
+//   console.log(data)
+// })
 
 export default {
   name: 'HelloWorld',
@@ -104,7 +138,7 @@ export default {
         language:'zh_CN',
         min_height: 400
       },
-      activeName: '2',
+      activeName: '4',
       list: listCache ? JSON.parse(listCache) : [],
       havedList: havedListCache ? JSON.parse(havedListCache) : [],
       examineList: [],
@@ -112,15 +146,18 @@ export default {
       form: this.initForm(),
       itemActiveName: '',
       examineItemActiveName: '',
+      timeRemaining: 1 * 60 * 1000 , // 剩余时间
       countdownTime: 0,
       examineStatus: 0, //答题状态 0：未开始 1:准备，2：过渡阶段 3：答题 ；4：结束
       examineStatusMap: {
         0: { value: 0, label: '未开始', time: 0 },
         1: { value: 1, label: '备考倒计时：', time: 5 * 60 * 1000 },
-        2: { value: 2, label: '准备答题倒计时：', time: 1 * 60 * 1000 },
+        2: { value: 2, label: '准备答题倒计时：', time: 7 * 1000 },
         3: { value: 3, label: '答题倒计时：', time: 10 * 60 * 1000 },
-        4: { value: 4, label: '结束答题', time: 0 * 60 * 1000 }
-      }
+        4: { value: 4, label: '结束答题，剩余答题时间：', time: 0 * 60 * 1000 }
+      },
+      isPause: false, // 是否暂停时间
+      jsonStr: '', // 导入json字符串
     }
   },
   watch:{
@@ -199,6 +236,7 @@ export default {
         this.havedList = []
         this.handleRandom()
       } else {
+        this.examineStatus = 0
         this.$nextTick(() => {
           const result = []
           while (result.length < 3) {
@@ -209,7 +247,57 @@ export default {
           }
           this.examineList = result
           this.havedList.push(...result)
+          this.examineStatus = 1
         })
+      }
+    },
+    handleProgress(data) {
+      // console.log('data', data)
+      const { hours, minutes, seconds } = data
+      this.timeRemaining = `${hours}:${minutes}:${seconds}`
+    },
+    handleEnd() {
+      // console.log('倒计时结束')
+      if (this.countdownTime > 0) {
+        this.examineStatus++
+      }
+      this.$nextTick(() => {
+        this.timeRemaining = `00:00:00`
+      })
+    },
+    handleTime() {
+      const ref = this.$refs.countdownRef
+      if (this.isPause) {
+        ref.start()
+      } else {
+        ref.abort()
+      }
+      this.isPause = !this.isPause
+    },
+    handleAgain() {
+      this.examineStatus = 0
+      this.$nextTick(() => {
+        this.examineStatus = 2
+      })
+    },
+    handleFinish() {
+      this.examineStatus = 4
+    },
+    handleImmediately() {
+      this.examineStatus = 3
+    },
+    handleBegin() {
+      this.examineStatus = 2
+    },
+    handleImport() {
+      if (!this.jsonStr) return
+      try {
+        const jsonData = JSON.parse(this.jsonStr)
+        const addData = differenceBy(jsonData, this.list, 'id')
+        this.list.push(...addData)
+        this.jsonStr = ''
+      } catch (error) {
+        this.$message.error(error)
       }
     }
   }
