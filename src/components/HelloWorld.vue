@@ -1,15 +1,32 @@
 <template>
   <div class="hello">
+    <countdown :time="5 * 60 * 1000" :transform="transform">
+      <template #default="{ hours, minutes, seconds }">
+        {{ `${hours}:${minutes}:${seconds}` }}
+      </template>
+    </countdown>
     <el-row type="flex" align="middle" justify="center">
       <el-col :xs="24" :sm="12">
         <el-tabs v-model="activeName" type="card" style="text-align:left">
-          <el-tab-pane label="题目列表" name="1">
-            <template v-if="activeName === '1'">
+          <el-tab-pane label="随机答题" name="2">
+            <template v-if="activeName === '2'">
               <div class="opt-btn" style="margin: 15px 0">
-                <el-button type="primary" size="small" @click="handleAdd">增加题目</el-button>
+                <el-button type="primary" @click="handleRandom">随机答题</el-button>
+                <el-button type="primary" @click="handleRandom">开始答题</el-button>
+                <el-button type="primary" @click="handleRandom">重新答题</el-button>
+                <div style="float: right; color: red; font-weight: bold;">
+                  <span>{{ examineStatusMap[examineStatus].label }}</span>
+                  <countdown ref="countdownRef" :time="countdownTime" :transform="transform">
+                    <template #default="{ hours, minutes, seconds }">
+                      {{ `${hours}:${minutes}:${seconds}` }}
+                    </template>
+                  </countdown>
+                  <!-- <span>{{  }}</span> -->
+                  <el-button type="primary" size="mini" @click="handleRandom">暂停时间</el-button>
+                </div>
               </div>
-              <el-collapse v-model="itemActiveName">
-                <el-collapse-item v-for="(item, index) in list" :key="item.id" :name="item.id" :title="item.q">
+              <el-collapse v-model="examineItemActiveName">
+                <el-collapse-item v-for="(item, index) in examineList" :key="item.id" :name="item.id" :title="item.q">
                   <template v-slot:title>
                     <span style="margin-right: 5px; font-size: 12px; font-weight: bold;">{{ index + 1 }}. {{ item.q }}</span>
                     <div class="btn-icon-box" style="width: 90px">
@@ -22,13 +39,13 @@
               </el-collapse>
             </template>
           </el-tab-pane>
-          <el-tab-pane label="随机答题" name="2">
-            <template v-if="activeName === '2'">
+          <el-tab-pane label="题目列表" name="1">
+            <template v-if="activeName === '1'">
               <div class="opt-btn" style="margin: 15px 0">
-                <el-button type="primary" @click="handleRandom">随机答题</el-button>
+                <el-button type="primary" size="small" @click="handleAdd">增加题目</el-button>
               </div>
               <el-collapse v-model="itemActiveName">
-                <el-collapse-item v-for="(item, index) in examineList" :key="item.id" :name="item.id" :title="item.q">
+                <el-collapse-item v-for="(item, index) in list" :key="item.id" :name="item.id" :title="item.q">
                   <template v-slot:title>
                     <span style="margin-right: 5px; font-size: 12px; font-weight: bold;">{{ index + 1 }}. {{ item.q }}</span>
                     <div class="btn-icon-box" style="width: 90px">
@@ -65,6 +82,7 @@
 </template>
 
 <script>
+import VueCountdown from '@chenfengyuan/vue-countdown'
 import Editor from '@tinymce/tinymce-vue'
 import { cloneDeep, differenceBy } from 'lodash'
 import { v4 as uuidv4 } from 'uuid'
@@ -74,10 +92,36 @@ const havedListCache = window.localStorage.getItem('havedList') || ''
 export default {
   name: 'HelloWorld',
   components: {
-    Editor
+    Editor,
+    Countdown: VueCountdown
   },
   props: {
     msg: String
+  },
+  data() {
+    return {
+      initOptions: {
+        language:'zh_CN',
+        min_height: 400
+      },
+      activeName: '2',
+      list: listCache ? JSON.parse(listCache) : [],
+      havedList: havedListCache ? JSON.parse(havedListCache) : [],
+      examineList: [],
+      curItem: {},
+      form: this.initForm(),
+      itemActiveName: '',
+      examineItemActiveName: '',
+      countdownTime: 0,
+      examineStatus: 0, //答题状态 0：未开始 1:准备，2：过渡阶段 3：答题 ；4：结束
+      examineStatusMap: {
+        0: { value: 0, label: '未开始', time: 0 },
+        1: { value: 1, label: '备考倒计时：', time: 5 * 60 * 1000 },
+        2: { value: 2, label: '准备答题倒计时：', time: 1 * 60 * 1000 },
+        3: { value: 3, label: '答题倒计时：', time: 10 * 60 * 1000 },
+        4: { value: 4, label: '结束答题', time: 0 * 60 * 1000 }
+      }
+    }
   },
   watch:{
     list: {
@@ -92,26 +136,14 @@ export default {
         window.localStorage.setItem('havedList', JSON.stringify(value))
       }
     },
+    examineStatus(value) {
+      this.countdownTime = this.examineStatusMap[value].time
+    }
   },
   computed: {
     // 可用考试题
     validList() {
       return differenceBy(this.list, this.havedList, 'id')
-    }
-  },
-  data() {
-    return {
-      initOptions: {
-        language:'zh_CN',
-        min_height: 400
-      },
-      activeName: '3',
-      list: listCache ? JSON.parse(listCache) : [],
-      havedList: havedListCache ? JSON.parse(havedListCache) : [],
-      examineList: [],
-      curItem: {},
-      form: this.initForm(),
-      itemActiveName: ''
     }
   },
   methods: {
@@ -121,6 +153,13 @@ export default {
         q: '',
         a: ''
       }
+    },
+    transform(props) {
+      Object.keys(props).forEach(key => {
+        const value = props[key]
+        props[key] = value < 10 ? `0${value}` : value
+      })
+      return props
     },
     handleAdd() {
       this.form = this.initForm()
