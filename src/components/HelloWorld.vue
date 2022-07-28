@@ -16,24 +16,24 @@
                 <el-button v-if="[1, 2].includes(examineStatus)" type="primary" size="small" @click="handleImmediately">立即答题</el-button>
                 <el-button v-if="[3, 4].includes(examineStatus)" type="primary" size="small" @click="handleAgain">重新答题</el-button>
                 <el-button v-if="[3].includes(examineStatus)" type="primary" size="small" @click="handleFinish">结束答题</el-button>
-                <div style="float: right; color: red; font-weight: bold;">
-                  <span>{{ examineStatusMap[examineStatus].label }}</span>
-                  <template v-if="examineStatus !== 4">
-                    <countdown ref="countdownRef" :time="countdownTime" :transform="transform" @progress="handleProgress" @end="handleEnd">
-                      <template #default="{ hours, minutes, seconds }">
-                        {{ `${hours}:${minutes}:${seconds}` }}
-                      </template>
-                    </countdown>
-                    <el-button v-if="[1, 2, 3].includes(examineStatus)" :type="isPause ? 'success' : 'danger'" size="mini" @click="handleTime">{{ isPause ? '继续答题' : '暂停答题' }}</el-button>
-                  </template>
-                  <span v-else>{{ timeRemaining }}</span>
-                </div>
+              </div>
+              <div style=" color: red; font-weight: bold; text-align: center;margin: 30px 0 15px;">
+                <span>{{ examineStatusMap[examineStatus].label }}</span>
+                <template v-if="examineStatus !== 4">
+                  <countdown ref="countdownRef" :time="countdownTime" :transform="transform" @progress="handleProgress" @end="handleEnd">
+                    <template #default="{ hours, minutes, seconds }">
+                      {{ `${hours}:${minutes}:${seconds}` }}
+                    </template>
+                  </countdown>
+                  <el-button v-if="[1, 2, 3].includes(examineStatus)" :type="isPause ? 'success' : 'danger'" size="mini" @click="handleTime">{{ isPause ? '继续答题' : '暂停答题' }}</el-button>
+                </template>
+                <span v-else>{{ timeRemaining }}</span>
               </div>
               <el-collapse v-model="examineItemActiveName">
                 <el-collapse-item v-for="(item, index) in examineList" :key="item.id" :name="item.id" :title="item.q">
                   <template v-slot:title>
                     <span style="margin-right: 5px; font-size: 12px; font-weight: bold;">{{ index + 1 }}. {{ item.q }}</span>
-                    <div class="btn-icon-box" style="width: 90px">
+                    <div class="btn-icon-box" style="min-width: 40px">
                       <i class="el-icon-edit-outline" style="color: #409EFF; margin: 0 3px 0 0;" @click="handleEdit(item)"></i>
                       <i class="el-icon-delete" style="color: #f56c6c;margin: 0 3px;" @click="handleDelete(index)"></i>
                     </div>
@@ -362,7 +362,8 @@ a {
 ::v-deep .el-collapse-item__header {
   line-height: normal;
   min-height: 48px;
-  padding: 5px 0;
+  padding: 10px 0;
+  width: 100%;
 }
 
 </style>
