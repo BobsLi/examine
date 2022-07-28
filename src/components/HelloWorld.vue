@@ -47,9 +47,14 @@
             <template v-if="activeName === '1'">
               <div class="opt-btn" style="margin: 15px 0">
                 <el-button type="primary" size="small" @click="handleAdd">增加题目</el-button>
+                <div style="float: right">
+                  <el-input v-model="searchValue" size="small" prefix-icon="el-icon-search" placeholder="题目关键字搜索">
+
+                  </el-input>
+                </div>
               </div>
               <el-collapse v-model="itemActiveName">
-                <el-collapse-item v-for="(item, index) in list" :key="item.id" :name="item.id" :title="item.q">
+                <el-collapse-item v-for="(item, index) in searchList" :key="item.id" :name="item.id" :title="item.q">
                   <template v-slot:title>
                     <span style="margin-right: 5px; font-size: 12px; font-weight: bold;">{{ index + 1 }}. {{ item.q }}</span>
                     <div class="btn-icon-box" style="width: 90px">
@@ -96,14 +101,14 @@
       </el-col>
     </el-row>
     <audio v-if="[4].includes(examineStatus)" controls height="100" width="100" autoplay style="display: fixed; top: -1000; z-index: -1; opacity: 0; visibility: hidden"> 
-      <source src="/audio/end.mp3" type="audio/mpeg">
-      <source src="/audio/end.mp3" type="audio/ogg">
-      <embed height="50" width="100" src="/audio/end.mp3">
+      <source :src="endAudioPath" type="audio/mpeg">
+      <source :src="endAudioPath" type="audio/ogg">
+      <embed height="50" width="100" :src="endAudioPath">
     </audio>
     <audio v-if="[2].includes(examineStatus)" controls height="100" width="100" autoplay style="display: fixed; top: -1000; z-index: -1; opacity: 0; visibility: hidden"> 
-      <source src="/audio/start.mp3" type="audio/mpeg">
-      <source src="/audio/start.mp3" type="audio/ogg">
-      <embed height="50" width="100" src="/audio/start.mp3">
+      <source :src="startAudioPath" type="audio/mpeg">
+      <source :src="startAudioPath" type="audio/ogg">
+      <embed height="50" width="100" :src="startAudioPath">
     </audio>
   </div>
 </template>
@@ -138,7 +143,7 @@ export default {
         language:'zh_CN',
         min_height: 400
       },
-      activeName: '4',
+      activeName: '1',
       list: listCache ? JSON.parse(listCache) : [],
       havedList: havedListCache ? JSON.parse(havedListCache) : [],
       examineList: [],
@@ -158,6 +163,9 @@ export default {
       },
       isPause: false, // 是否暂停时间
       jsonStr: '', // 导入json字符串
+      startAudioPath: `${process.env.BASE_URL}audio/start.mp3`,
+      endAudioPath: `${process.env.BASE_URL}audio/end.mp3`,
+      searchValue: ''
     }
   },
   watch:{
@@ -181,6 +189,9 @@ export default {
     // 可用考试题
     validList() {
       return differenceBy(this.list, this.havedList, 'id')
+    },
+    searchList() {
+      return this.list.filter(item => !this.searchValue || item.q.includes(this.searchValue))
     }
   },
   methods: {
@@ -212,6 +223,7 @@ export default {
       const cloneForm = {
         ...this.form
       }
+      if (!cloneForm.q) return
       if (cloneForm.id) {
         Object.assign(this.curItem, cloneForm)
       } else {
@@ -232,7 +244,7 @@ export default {
     },
     handleRandom() {
       const cloneValidList = cloneDeep(this.validList)
-      if (cloneValidList.length < 3) {
+      if (cloneValidList.length < 3 && (cloneValidList.length + this.havedList.length) >= 3) {
         this.havedList = []
         this.handleRandom()
       } else {
