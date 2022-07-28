@@ -86,6 +86,9 @@
           </el-tab-pane>
           <el-tab-pane label="导入题目" name="4">
             <template v-if="activeName === '4'">
+              <div class="opt-btn" style="margin: 15px 0">
+                <el-button type="primary" size="small" @click="handleImprtDefault">导入默认数据</el-button>
+              </div>
               <el-form :model="{}" label-position="top">
                 <el-form-item label="导入">
                   <el-input v-model="jsonStr" type="textarea" :rows="10" placeholder=""></el-input>
@@ -116,6 +119,7 @@
 <script>
 import VueCountdown from '@chenfengyuan/vue-countdown'
 import Editor from '@tinymce/tinymce-vue'
+import axios from 'axios'
 import { cloneDeep, differenceBy } from 'lodash'
 import { v4 as uuidv4 } from 'uuid'
 const listCache = window.localStorage.getItem('list') || ''
@@ -143,7 +147,7 @@ export default {
         language:'zh_CN',
         min_height: 400
       },
-      activeName: '1',
+      activeName: '2',
       list: listCache ? JSON.parse(listCache) : [],
       havedList: havedListCache ? JSON.parse(havedListCache) : [],
       examineList: [],
@@ -193,6 +197,13 @@ export default {
     searchList() {
       return this.list.filter(item => !this.searchValue || item.q.includes(this.searchValue))
     }
+  },
+  mounted() {
+    this.$nextTick(() => {
+      if (this.list.length === 0) {
+        this.handleImprtDefault()
+      }
+    })
   },
   methods: {
     initForm() {
@@ -306,11 +317,27 @@ export default {
       try {
         const jsonData = JSON.parse(this.jsonStr)
         const addData = differenceBy(jsonData, this.list, 'id')
-        this.list.push(...addData)
+        if (addData.length > 0) {
+          this.list.push(...addData)
+          this.$message.success('数据导入成功')
+        }
         this.jsonStr = ''
       } catch (error) {
         this.$message.error(error)
       }
+    },
+    handleImprtDefault() {
+      axios.get(`${process.env.BASE_URL}cache/list.json`).then(res => {
+        console.log(res)
+        const { data = [] } = res
+        const addData = differenceBy(data, this.list, 'id')
+        if (addData.length > 0) {
+          this.list.push(...addData)
+          this.$message.success('数据导入成功')
+        }
+      }).catch(err => {
+        this.$message.error(err)
+      })
     }
   }
 }
