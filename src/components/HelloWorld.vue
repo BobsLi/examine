@@ -103,12 +103,12 @@
         </el-tabs>
       </el-col>
     </el-row>
-    <audio v-if="[4].includes(examineStatus)" controls height="100" width="100" autoplay style="display: fixed; top: -1000; z-index: -1; opacity: 0; visibility: hidden"> 
+    <audio id="endAudio"  controls height="100" width="100" autoplay="false" style="display: fixed; top: -1000; z-index: -1; opacity: 0; visibility: hidden"> 
       <source :src="endAudioPath" type="audio/mpeg">
       <source :src="endAudioPath" type="audio/ogg">
       <embed height="50" width="100" :src="endAudioPath">
     </audio>
-    <audio v-if="[2].includes(examineStatus)" controls height="100" width="100" autoplay style="display: fixed; top: -1000; z-index: -1; opacity: 0; visibility: hidden"> 
+    <audio id="startAudio"  controls height="100" width="100" autoplay="false" style="display: fixed; top: -1000; z-index: -1; opacity: 0; visibility: hidden"> 
       <source :src="startAudioPath" type="audio/mpeg">
       <source :src="startAudioPath" type="audio/ogg">
       <embed height="50" width="100" :src="startAudioPath">
@@ -169,7 +169,9 @@ export default {
       jsonStr: '', // 导入json字符串
       startAudioPath: `${process.env.BASE_URL}audio/start.mp3`,
       endAudioPath: `${process.env.BASE_URL}audio/end.mp3`,
-      searchValue: ''
+      searchValue: '',
+      startAudioEl: null,
+      endAudioEl: null,
     }
   },
   watch:{
@@ -187,6 +189,18 @@ export default {
     },
     examineStatus(value) {
       this.countdownTime = this.examineStatusMap[value].time
+      if (value === 2) {
+        this.startAudioEl.play()
+      } else {
+        this.startAudioEl.pause()
+        this.startAudioEl.currentTime = 0
+      }
+      if (value === 4) {
+        this.endAudioEl.play()
+      } else {
+        this.endAudioEl.pause()
+        this.endAudioEl.currentTime = 0
+      }
     }
   },
   computed: {
@@ -203,6 +217,8 @@ export default {
       if (this.list.length === 0) {
         this.handleImprtDefault()
       }
+      this.startAudioEl = document.getElementById('startAudio')
+      this.endAudioEl = document.getElementById('endAudio')
     })
   },
   methods: {
