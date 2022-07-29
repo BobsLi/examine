@@ -35,7 +35,7 @@
                     <span style="margin-right: 5px; font-size: 12px; font-weight: bold;">{{ index + 1 }}. {{ item.q }}</span>
                     <div class="btn-icon-box" style="min-width: 40px">
                       <i class="el-icon-edit-outline" style="color: #409EFF; margin: 0 3px 0 0;" @click="handleEdit(item)"></i>
-                      <i class="el-icon-delete" style="color: #f56c6c;margin: 0 3px;" @click="handleDelete(index)"></i>
+                      <i class="el-icon-delete" style="color: #f56c6c;margin: 0 3px;" @click="handleDelete(index, item)"></i>
                     </div>
                   </template>
                   <div v-html="item.a"></div>
@@ -59,7 +59,7 @@
                     <span style="margin-right: 5px; font-size: 12px; font-weight: bold;">{{ index + 1 }}. {{ item.q }}</span>
                     <div class="btn-icon-box" style="width: 90px">
                       <i class="el-icon-edit-outline" style="color: #409EFF; margin: 0 3px 0 0;" @click="handleEdit(item)"></i>
-                      <i class="el-icon-delete" style="color: #f56c6c;margin: 0 3px;" @click="handleDelete(index)"></i>
+                      <i class="el-icon-delete" style="color: #f56c6c;margin: 0 3px;" @click="handleDelete(index, item)"></i>
                     </div>
                   </template>
                   <div v-html="item.a"></div>
@@ -251,6 +251,10 @@ export default {
         ...this.form
       }
       if (!cloneForm.q) return
+      if (this.list.find(item => item.q.includes(cloneForm.q))) {
+        this.$message.error('已经存在相似的题目了')
+        return
+      }
       if (cloneForm.id) {
         Object.assign(this.curItem, cloneForm)
       } else {
@@ -266,8 +270,12 @@ export default {
       this.form = { ...item }
       this.activeName = '3'
     },
-    handleDelete(index) {
+    handleDelete(index, row) {
       this.list.splice(index, 1)
+      const havedIndex = this.havedList.findIndex(item => item.id === row.id)
+      if (havedIndex !== -1) {
+        this.havedList.splice(havedIndex, 1)
+      }
     },
     handleRandom() {
       const cloneValidList = cloneDeep(this.validList)
