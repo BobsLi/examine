@@ -48,8 +48,12 @@
               <div class="opt-btn" style="margin: 15px 0">
                 <el-button type="primary" size="small" @click="handleAdd">增加题目</el-button>
                 <div style="float: right">
-                  <el-input v-model="searchValue" size="small" prefix-icon="el-icon-search" placeholder="题目关键字搜索">
-
+                  <el-input v-model="searchValue" size="small" suffix-icon="el-icon-search" placeholder="题目关键字搜索">
+                    <el-select v-model="selectType" slot="prepend" placeholder="请选择" style="width: 100px">
+                      <el-option label="全部题目" :value="0"></el-option>
+                      <el-option label="未答题目" :value="1"></el-option>
+                      <el-option label="已答题目" :value="2"></el-option>
+                    </el-select>
                   </el-input>
                 </div>
               </div>
@@ -170,6 +174,7 @@ export default {
       startAudioPath: `${process.env.BASE_URL}audio/start.mp3`,
       endAudioPath: `${process.env.BASE_URL}audio/end.mp3`,
       searchValue: '',
+      selectType: 0, // 题目类型
       startAudioEl: null,
       endAudioEl: null,
     }
@@ -209,7 +214,20 @@ export default {
       return differenceBy(this.list, this.havedList, 'id')
     },
     searchList() {
-      return this.list.filter(item => !this.searchValue || item.q.includes(this.searchValue))
+      let list
+      switch (this.selectType) {
+        case 1:
+          list = this.validList
+          break;
+        case 2:
+          list = this.havedList
+          break;
+      
+        default:
+          list = this.list
+          break;
+      }
+      return list.filter(item => !this.searchValue || item.q.includes(this.searchValue))
     }
   },
   mounted() {
@@ -369,20 +387,6 @@ export default {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
-h3 {
-  margin: 40px 0 0;
-}
-ul {
-  list-style-type: none;
-  padding: 0;
-}
-li {
-  display: inline-block;
-  margin: 0 10px;
-}
-a {
-  color: #42b983;
-}
 ::v-deep .el-collapse-item__header {
   line-height: normal;
   min-height: 48px;
